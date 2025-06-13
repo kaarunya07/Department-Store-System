@@ -1,0 +1,478 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+
+class Product {
+    private String name;
+    private String tag;
+    private String itemCode;
+    private String description;
+    private double price;
+    private int quantity;
+
+    public Product(String name, String tag, String itemCode, String description, double price, int quantity) {
+        this.name = name;
+        this.tag = tag;
+        this.itemCode = itemCode;
+        this.description = description;
+        this.price = price;
+        this.quantity = quantity;
+    }
+
+    public String getName() { return name; }
+    public String getItemCode() { return itemCode; }
+    public double getPrice() { return price; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int qty) { this.quantity = qty; }
+    public String getTag() { return tag; }
+    public String getDescription() { return description; }
+
+    @Override
+    public String toString() {
+        return name + " (" + itemCode + ") - ₹" + price + " | In stock: " + quantity;
+    }
+}
+
+class InventoryManager {
+    private Map<String, Product> productMap = new HashMap<>();
+
+    public void addProduct(Product product) {
+        productMap.put(product.getItemCode(), product);
+    }
+
+    public Product getProduct(String itemCode) {
+        return productMap.get(itemCode);
+    }
+
+    public void updateStock(String itemCode, int quantitySold) {
+        Product p = productMap.get(itemCode);
+        if (p != null && p.getQuantity() >= quantitySold) {
+            p.setQuantity(p.getQuantity() - quantitySold);
+        }
+    }
+
+    public java.util.List<Product> getAllProducts() {
+        return new java.util.ArrayList<>(productMap.values());
+    }
+
+    public boolean itemExists(String itemCode) {
+        return productMap.containsKey(itemCode);
+    }
+
+    // NEW: Change price of a product
+    public boolean changePrice(String itemCode, double newPrice) {
+        Product p = productMap.get(itemCode);
+        if (p != null) {
+            // Create a new Product with updated price and replace in map
+            Product updated = new Product(
+                p.getName(), p.getTag(), p.getItemCode(), p.getDescription(), newPrice, p.getQuantity()
+            );
+            productMap.put(itemCode, updated);
+            return true;
+        }
+        return false;
+    }
+}
+
+class SalesTransaction {
+    private java.util.List<Product> items = new java.util.ArrayList<>();
+    private Map<Product, Integer> quantityMap = new HashMap<>();
+    private double discountRate = 0.0;
+    private String paymentMethod = "";
+
+    public void scanItem(Product product, int quantity) {
+        items.add(product);
+        quantityMap.put(product, quantity);
+    }
+
+    // NEW: Remove product from cart
+    public void removeFromCart(Product product) {
+        items.remove(product);
+        quantityMap.remove(product);
+    }
+
+    public void applyDiscount(String event) {
+        switch (event.toLowerCase()) {
+            case "1":
+                discountRate = 0.0;
+                break;
+            case "2":
+                discountRate = 0.10;
+                break;
+            case "3":
+                discountRate = 0.15;
+                break;
+            case "4":
+                discountRate = 0.20;
+                break;
+            default:
+                discountRate = 0.0;
+        }
+    }
+
+    public void setPaymentMethod(String method) {
+        this.paymentMethod = method;
+    }
+
+    public double calculateTotal() {
+        double total = 0.0;
+        for (Product product : items) {
+            total += product.getPrice() * quantityMap.get(product);
+        }
+        return total - (total * discountRate);
+    }
+
+    public double getDiscountRate() {
+        return discountRate;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public Map<Product, Integer> getCart() {
+        return quantityMap;
+    }
+
+    public void clear() {
+        items.clear();
+        quantityMap.clear();
+        discountRate = 0.0;
+        paymentMethod = "";
+    }
+}
+
+public class Updated_Dept_Store_System extends JFrame   {
+    private InventoryManager inventoryManager = new InventoryManager();
+    private SalesTransaction transaction = new SalesTransaction();
+
+    private JTextArea inventoryArea;
+    private JTextField nameField, tagField, codeField, descField, priceField, qtyField;
+    private JTextField saleCodeField, saleQtyField;
+    private JTextArea cartArea, billArea;
+    private JComboBox<String> discountBox, paymentBox;
+    // Add a field for store name
+    private JTextField storeNameField;
+    private JTextField removeCodeField; // NEW: For removing from cart
+    private JTextField changePriceCodeField, changePriceField; // NEW
+
+    public Updated_Dept_Store_System() {
+        setTitle("Department Store System");
+        setSize(800, 700);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Store Name Panel
+        JPanel storeNamePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        storeNamePanel.setBorder(BorderFactory.createTitledBorder("Store Name"));
+        storeNameField = new JTextField("My Store", 30);
+        storeNamePanel.add(new JLabel("Store Name:"));
+        storeNamePanel.add(storeNameField);
+
+        // Inventory Panel
+        JPanel inventoryPanel = new JPanel(new BorderLayout());
+        inventoryPanel.setBorder(BorderFactory.createTitledBorder("Inventory"));
+
+        inventoryArea = new JTextArea(10, 50);
+        inventoryArea.setEditable(false);
+        JScrollPane inventoryScroll = new JScrollPane(inventoryArea);
+        inventoryPanel.add(inventoryScroll, BorderLayout.CENTER);
+
+        JButton refreshInventoryBtn = new JButton("Refresh Inventory");
+        inventoryPanel.add(refreshInventoryBtn, BorderLayout.SOUTH);
+
+        // Add Product Panel
+        JPanel addPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        addPanel.setBorder(BorderFactory.createTitledBorder("Add New Product"));
+        nameField = new JTextField();
+        tagField = new JTextField();
+        codeField = new JTextField();
+        descField = new JTextField();
+        priceField = new JTextField();
+        qtyField = new JTextField();
+        JButton addBtn = new JButton("Add Product");
+
+        addPanel.add(new JLabel("Name:"));
+        addPanel.add(nameField);
+        addPanel.add(new JLabel("Tag:"));
+        addPanel.add(tagField);
+        addPanel.add(new JLabel("Item Code:"));
+        addPanel.add(codeField);
+        addPanel.add(new JLabel("Description:"));
+        addPanel.add(descField);
+        addPanel.add(new JLabel("Price:"));
+        addPanel.add(priceField);
+        addPanel.add(new JLabel("Quantity:"));
+        addPanel.add(qtyField);
+        addPanel.add(new JLabel(""));
+        addPanel.add(addBtn);
+
+        // NEW: Change Price Panel
+        JPanel changePricePanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        changePricePanel.setBorder(BorderFactory.createTitledBorder("Change Product Price"));
+        changePriceCodeField = new JTextField();
+        changePriceField = new JTextField();
+        JButton changePriceBtn = new JButton("Change Price");
+        changePricePanel.add(new JLabel("Item Code:"));
+        changePricePanel.add(changePriceCodeField);
+        changePricePanel.add(new JLabel("New Price:"));
+        changePricePanel.add(changePriceField);
+        changePricePanel.add(changePriceBtn);
+
+        // Sales Panel
+        JPanel salesPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        salesPanel.setBorder(BorderFactory.createTitledBorder("Sales"));
+
+        saleCodeField = new JTextField();
+        saleQtyField = new JTextField();
+        JButton addToCartBtn = new JButton("Add to Cart");
+
+        // NEW: Remove from cart UI
+        removeCodeField = new JTextField();
+        JButton removeFromCartBtn = new JButton("Remove from Cart");
+
+        salesPanel.add(new JLabel("Item Code:"));
+        salesPanel.add(saleCodeField);
+        salesPanel.add(new JLabel("Quantity:"));
+        salesPanel.add(saleQtyField);
+        salesPanel.add(new JLabel(""));
+        salesPanel.add(addToCartBtn);
+
+        salesPanel.add(new JLabel("Remove Item Code:"));
+        salesPanel.add(removeCodeField);
+        salesPanel.add(new JLabel(""));
+        salesPanel.add(removeFromCartBtn);
+
+        cartArea = new JTextArea(8, 40);
+        cartArea.setEditable(false);
+        JScrollPane cartScroll = new JScrollPane(cartArea);
+
+        // Discount and Payment Panel
+        JPanel discountPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        discountPanel.setBorder(BorderFactory.createTitledBorder("Discount & Payment"));
+
+        discountBox = new JComboBox<>(new String[]{
+            "No Discount",
+            "New Year (10%)",
+            "Holi Offer (15%)",
+            "Diwali Carnival Offer (20%)"
+        });
+        paymentBox = new JComboBox<>(new String[]{"Cash", "Card", "UPI"});
+        JButton checkoutBtn = new JButton("Checkout & Print Bill");
+
+        discountPanel.add(new JLabel("Discount:"));
+        discountPanel.add(discountBox);
+        discountPanel.add(new JLabel("Payment Method:"));
+        discountPanel.add(paymentBox);
+        discountPanel.add(new JLabel(""));
+        discountPanel.add(checkoutBtn);
+
+        billArea = new JTextArea(10, 50);
+        billArea.setEditable(false);
+        JScrollPane billScroll = new JScrollPane(billArea);
+
+        // Layout
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.add(storeNamePanel, BorderLayout.NORTH); // Add store name panel at the top
+
+        // Add both inventoryPanel and changePricePanel to a vertical box
+        JPanel inventoryAndChangePanel = new JPanel();
+        inventoryAndChangePanel.setLayout(new BoxLayout(inventoryAndChangePanel, BoxLayout.Y_AXIS));
+        inventoryAndChangePanel.add(inventoryPanel);
+        inventoryAndChangePanel.add(changePricePanel);
+
+        leftPanel.add(inventoryAndChangePanel, BorderLayout.CENTER);
+        leftPanel.add(addPanel, BorderLayout.SOUTH);
+
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(salesPanel, BorderLayout.NORTH);
+        rightPanel.add(cartScroll, BorderLayout.CENTER);
+        rightPanel.add(discountPanel, BorderLayout.SOUTH);
+
+        add(leftPanel, BorderLayout.WEST);
+        add(rightPanel, BorderLayout.CENTER);
+        add(billScroll, BorderLayout.SOUTH);
+
+        // Seed products
+        seedProducts();
+        refreshInventory();
+
+        // Listeners
+        refreshInventoryBtn.addActionListener(e -> refreshInventory());
+
+        addBtn.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            String tag = tagField.getText().trim();
+            String code = codeField.getText().trim();
+            String desc = descField.getText().trim();
+            String priceStr = priceField.getText().trim();
+            String qtyStr = qtyField.getText().trim();
+
+            if (name.isEmpty() || tag.isEmpty() || code.isEmpty() || desc.isEmpty() || priceStr.isEmpty() || qtyStr.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "All fields are required.");
+                return;
+            }
+            if (inventoryManager.itemExists(code)) {
+                JOptionPane.showMessageDialog(this, "Item code already exists!");
+                return;
+            }
+            try {
+                double price = Double.parseDouble(priceStr);
+                int qty = Integer.parseInt(qtyStr);
+                Product newProduct = new Product(name, tag, code, desc, price, qty);
+                inventoryManager.addProduct(newProduct);
+                JOptionPane.showMessageDialog(this, "Product added successfully.");
+                refreshInventory();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid price or quantity.");
+            }
+        });
+
+        // NEW: Change price action
+        changePriceBtn.addActionListener(e -> {
+            String code = changePriceCodeField.getText().trim();
+            String priceStr = changePriceField.getText().trim();
+            if (code.isEmpty() || priceStr.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter item code and new price.");
+                return;
+            }
+            try {
+                double newPrice = Double.parseDouble(priceStr);
+                if (newPrice < 0) {
+                    JOptionPane.showMessageDialog(this, "Price cannot be negative.");
+                    return;
+                }
+                boolean changed = inventoryManager.changePrice(code, newPrice);
+                if (changed) {
+                    JOptionPane.showMessageDialog(this, "Price updated successfully.");
+                    refreshInventory();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Invalid item code.");
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid price.");
+            }
+        });
+
+        addToCartBtn.addActionListener(e -> {
+            String code = saleCodeField.getText().trim();
+            String qtyStr = saleQtyField.getText().trim();
+            if (code.isEmpty() || qtyStr.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter item code and quantity.");
+                return;
+            }
+            Product product = inventoryManager.getProduct(code);
+            if (product == null) {
+                JOptionPane.showMessageDialog(this, "Invalid item code.");
+                return;
+            }
+            try {
+                int qty = Integer.parseInt(qtyStr);
+                if (qty <= 0 || qty > product.getQuantity()) {
+                    JOptionPane.showMessageDialog(this, "Invalid quantity. In stock: " + product.getQuantity());
+                    return;
+                }
+                transaction.scanItem(product, qty);
+                inventoryManager.updateStock(code, qty);
+                updateCartArea();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid quantity.");
+            }
+        });
+
+        // NEW: Remove from cart action
+        removeFromCartBtn.addActionListener(e -> {
+            String code = removeCodeField.getText().trim();
+            if (code.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter item code to remove.");
+                return;
+            }
+            Product product = inventoryManager.getProduct(code);
+            if (product == null) {
+                JOptionPane.showMessageDialog(this, "Invalid item code.");
+                return;
+            }
+            // Restore quantity to inventory if present in cart
+            Integer qtyInCart = transaction.getCart().get(product);
+            if (qtyInCart != null) {
+                product.setQuantity(product.getQuantity() + qtyInCart);
+                transaction.removeFromCart(product);
+                updateCartArea();
+                refreshInventory();
+                JOptionPane.showMessageDialog(this, "Product removed from cart.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Product not in cart.");
+            }
+        });
+
+        checkoutBtn.addActionListener(e -> {
+            String discountChoice = String.valueOf(discountBox.getSelectedIndex() + 1);
+            transaction.applyDiscount(discountChoice);
+            String paymentMethod = (String) paymentBox.getSelectedItem();
+            transaction.setPaymentMethod(paymentMethod);
+            printBill();
+            transaction.clear();
+            updateCartArea();
+            refreshInventory();
+        });
+    }
+
+    private void seedProducts() {
+        inventoryManager.addProduct(new Product("Shampoo", "TAG01", "001", "Hair Care", 5.50, 50));
+        inventoryManager.addProduct(new Product("Toothpaste", "TAG02", "002", "Oral Care", 2.75, 30));
+        inventoryManager.addProduct(new Product("Notebook", "TAG03", "003", "Stationery", 1.50, 100));
+    }
+
+    private void refreshInventory() {
+        StringBuilder sb = new StringBuilder();
+        for (Product p : inventoryManager.getAllProducts()) {
+            sb.append(p).append("\n");
+        }
+        inventoryArea.setText(sb.toString());
+    }
+
+    private void updateCartArea() {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<Product, Integer> entry : transaction.getCart().entrySet()) {
+            Product p = entry.getKey();
+            int qty = entry.getValue();
+            sb.append(p.getName()).append(" (").append(p.getItemCode()).append(") x").append(qty)
+              .append(" @ ₹").append(String.format("%.2f", p.getPrice()))
+              .append(" = ₹").append(String.format("%.2f", p.getPrice() * qty)).append("\n");
+        }
+        cartArea.setText(sb.toString());
+    }
+
+    private void printBill() {
+        StringBuilder sb = new StringBuilder();
+        // Add store name at the top of the bill
+        sb.append("======= ").append(storeNameField.getText().trim()).append(" =======\n");
+        sb.append("======= BILL =======\n");
+        double total = 0.0;
+        for (Map.Entry<Product, Integer> entry : transaction.getCart().entrySet()) {
+            Product p = entry.getKey();
+            int qty = entry.getValue();
+            double line = p.getPrice() * qty;
+            sb.append(p.getName()).append(" (").append(p.getItemCode()).append(") x").append(qty)
+              .append(" @ ₹").append(String.format("%.2f", p.getPrice()))
+              .append(" = ₹").append(String.format("%.2f", line)).append("\n");
+            total += line;
+        }
+        double discount = total * transaction.getDiscountRate();
+        sb.append("--------------------\n");
+        sb.append("Subtotal: ₹").append(String.format("%.2f", total)).append("\n");
+        sb.append("Discount: ₹").append(String.format("%.2f", discount)).append("\n");
+        sb.append("Total: ₹").append(String.format("%.2f", total - discount)).append("\n");
+        sb.append("Payment Method: ").append(transaction.getPaymentMethod()).append("\n");
+        sb.append("====================\n");
+        billArea.setText(sb.toString());
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            Updated_Dept_Store_System frame = new Updated_Dept_Store_System();
+            frame.setVisible(true);
+        });
+    }
+}
