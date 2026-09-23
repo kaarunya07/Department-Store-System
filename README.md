@@ -1,4 +1,4 @@
-# Updated-Department-Store-System
+**Department-Store-System**
 
 The Department Store Management System is a basic user interface-based application developed using Java to simulate the billing functionality of a department store. This project showcases a structured implementation of Object-Oriented Programming (OOP) principles and demonstrates how Java can be used to manage real-life transactional systems efficiently through an interactive graphical environment.
 
